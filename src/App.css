@@ -106,9 +106,38 @@ nav button:hover {
 }
 
 .chord {
-  font-size: 0.85em;
+  display: block;
+  font-size: 0.75em;
   font-weight: 700;
   color: var(--primary);
+  line-height: 1;
+  margin-bottom: 0.1em;
+}
+
+.lyric-chord {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  vertical-align: text-bottom;
+  white-space: nowrap;
+  margin: 0 0.05em;
+}
+
+.lyric-chord.pos-left {
+  align-items: flex-start;
+}
+
+.lyric-chord.pos-center {
+  align-items: center;
+}
+
+.lyric-chord.pos-right {
+  align-items: flex-end;
+}
+
+.lyric-text {
+  display: inline;
+  line-height: 1.2;
 }
 
 form {

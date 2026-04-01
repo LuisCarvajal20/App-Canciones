@@ -255,8 +255,74 @@ function transposeLyrics(lyrics, oldKey, newKey) {
   })
 }
 
+function escapeHtml(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
 function formatLyrics(lyrics) {
-  return lyrics.replace(/\[([A-G](?:#|b)?[^\]\s]*)\]/g, '<sup class="chord">$1</sup>')
+  let result = ''
+  let buffer = ''
+  let i = 0
+
+  const flushBuffer = () => {
+    if (buffer.length) {
+      result += escapeHtml(buffer)
+      buffer = ''
+    }
+  }
+
+  while (i < lyrics.length) {
+    if (lyrics[i] === '[') {
+      const end = lyrics.indexOf(']', i + 1)
+      if (end !== -1) {
+        const chord = lyrics.slice(i + 1, end).trim()
+        if (/^[A-G](?:#|b)?.*$/.test(chord)) {
+          const leftMatch = buffer.match(/([^\s\[\]]+)$/)
+          const leftText = leftMatch ? leftMatch[1] : ''
+          if (leftText) {
+            buffer = buffer.slice(0, -leftText.length)
+          }
+
+          let rightEnd = end + 1
+          let rightText = ''
+          while (rightEnd < lyrics.length && !/\s/.test(lyrics[rightEnd]) && lyrics[rightEnd] !== '[' && lyrics[rightEnd] !== ']') {
+            rightText += lyrics[rightEnd]
+            rightEnd += 1
+          }
+
+          const combined = leftText + rightText
+          if (combined.length > 0) {
+            flushBuffer()
+            let position = 'center'
+            if (!leftText && rightText) {
+              position = 'left'
+            } else if (leftText && !rightText) {
+              position = 'right'
+            }
+            result += `<span class="lyric-chord pos-${position}"><span class="chord">${escapeHtml(chord)}</span><span class="lyric-text">${escapeHtml(combined)}</span></span>`
+            i = rightEnd
+            continue
+          }
+
+          flushBuffer()
+          result += `<sup class="chord">${escapeHtml(chord)}</sup>`
+          i = end + 1
+          continue
+        }
+      }
+    }
+
+    buffer += lyrics[i]
+    i += 1
+  }
+
+  flushBuffer()
+  return result
 }
 
 export default App
