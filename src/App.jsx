@@ -5,6 +5,8 @@ function App() {
   const [songs, setSongs] = useState([])
   const [playlists, setPlaylists] = useState([])
   const [currentView, setCurrentView] = useState('songs')
+  const [selectedSongId, setSelectedSongId] = useState(null)
+  const [editingSong, setEditingSong] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode')
     return saved ? JSON.parse(saved) : false
@@ -27,6 +29,16 @@ function App() {
 
   const addSong = (song) => {
     setSongs([...songs, { ...song, id: Date.now() }])
+  }
+
+  const updateSong = (song) => {
+    setSongs(songs.map(item => item.id === song.id ? song : item))
+    setEditingSong(null)
+  }
+
+  const showSong = (songId) => {
+    setSelectedSongId(songId)
+    setCurrentView('songs')
   }
 
   const transposeSong = (id, newKey) => {
@@ -60,38 +72,42 @@ function App() {
     <div className={`app ${darkMode ? 'dark' : ''}`}>
       <h1>App de Canciones</h1>
       <nav>
-        <button onClick={() => setCurrentView('songs')}>Canciones</button>
-        <button onClick={() => setCurrentView('add')}>Agregar Canción</button>
-        <button onClick={() => setCurrentView('playlists')}>Listas</button>
+        <button onClick={() => { setCurrentView('songs'); setSelectedSongId(null); setEditingSong(null) }}>Canciones</button>
+        <button onClick={() => { setCurrentView('add'); setEditingSong(null); setSelectedSongId(null) }}>Agregar Canción</button>
+        <button onClick={() => { setCurrentView('playlists'); setSelectedSongId(null); setEditingSong(null) }}>Listas</button>
         <button className="secondary" onClick={() => setDarkMode(!darkMode)}>
           {darkMode ? 'Modo Día' : 'Modo Noche'}
         </button>
       </nav>
-      {currentView === 'songs' && <SongList songs={songs} onTranspose={transposeSong} onAddToPlaylist={addToPlaylist} playlists={playlists} />}
-      {currentView === 'add' && <AddSong onAdd={addSong} />}
-      {currentView === 'playlists' && <PlaylistView playlists={playlists} songs={songs} />}
+      {currentView === 'songs' && <SongList songs={songs} onTranspose={transposeSong} onAddToPlaylist={addToPlaylist} playlists={playlists} selectedSongId={selectedSongId} onEdit={(song) => { setEditingSong(song); setCurrentView('add') }} />}
+      {currentView === 'add' && <AddSong onAdd={addSong} initialSong={editingSong} onUpdate={updateSong} onCancel={() => setEditingSong(null)} />}
+      {currentView === 'playlists' && <PlaylistView playlists={playlists} songs={songs} onSelectSong={showSong} />}
     </div>
   )
 }
 
-function SongList({ songs, onTranspose, onAddToPlaylist, playlists }) {
+function SongList({ songs, onTranspose, onAddToPlaylist, playlists, selectedSongId, onEdit }) {
+  const visibleSongs = selectedSongId ? songs.filter(song => song.id === selectedSongId) : songs
+
   return (
     <div>
       <h2>Canciones</h2>
-      {songs.map(song => (
+      {selectedSongId && visibleSongs.length === 1 && <p>Mostrando canción seleccionada</p>}
+      {visibleSongs.map(song => (
         <SongCard
           key={song.id}
           song={song}
           onTranspose={onTranspose}
           onAddToPlaylist={onAddToPlaylist}
           playlists={playlists}
+          onEdit={onEdit}
         />
       ))}
     </div>
   )
 }
 
-function SongCard({ song, onTranspose, onAddToPlaylist, playlists }) {
+function SongCard({ song, onTranspose, onAddToPlaylist, playlists, onEdit }) {
   const [isOpen, setIsOpen] = useState(false)
   const [newListName, setNewListName] = useState('')
   const allKeys = [
@@ -128,9 +144,14 @@ function SongCard({ song, onTranspose, onAddToPlaylist, playlists }) {
           <h3>{song.title}</h3>
           <p className="song-key">Tono: <strong>{song.key}</strong></p>
         </div>
-        <button className="secondary" onClick={() => setIsOpen(!isOpen)}>
-          {isOpen ? 'Cerrar tonos' : 'Transportar'}
-        </button>
+        <div className="song-actions">
+          <button className="secondary" onClick={() => setIsOpen(!isOpen)}>
+            {isOpen ? 'Cerrar tonos' : 'Transportar'}
+          </button>
+          <button className="secondary" onClick={() => onEdit(song)}>
+            Editar
+          </button>
+        </div>
       </div>
 
       <div className="lyrics" dangerouslySetInnerHTML={{ __html: formatLyrics(song.lyrics) }} />
@@ -169,14 +190,31 @@ function SongCard({ song, onTranspose, onAddToPlaylist, playlists }) {
   )
 }
 
-function AddSong({ onAdd }) {
+function AddSong({ onAdd, initialSong, onUpdate, onCancel }) {
   const [title, setTitle] = useState('')
   const [key, setKey] = useState('')
   const [lyrics, setLyrics] = useState('')
 
+  useEffect(() => {
+    if (initialSong) {
+      setTitle(initialSong.title)
+      setKey(initialSong.key)
+      setLyrics(initialSong.lyrics)
+    } else {
+      setTitle('')
+      setKey('')
+      setLyrics('')
+    }
+  }, [initialSong])
+
   const handleSubmit = (e) => {
     e.preventDefault()
-    onAdd({ title, key, lyrics })
+    if (initialSong) {
+      onUpdate({ ...initialSong, title, key, lyrics })
+      if (onCancel) onCancel()
+    } else {
+      onAdd({ title, key, lyrics })
+    }
     setTitle('')
     setKey('')
     setLyrics('')
@@ -184,26 +222,39 @@ function AddSong({ onAdd }) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <h2>Agregar Canción</h2>
+      <h2>{initialSong ? 'Editar Canción' : 'Agregar Canción'}</h2>
       <input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
       <input placeholder="Tono" value={key} onChange={(e) => setKey(e.target.value)} required />
       <textarea placeholder="Letras con acordes [C]Hola [D]mundo" value={lyrics} onChange={(e) => setLyrics(e.target.value)} required />
-      <button type="submit">Agregar</button>
+      <div className="form-actions">
+        <button type="submit">{initialSong ? 'Guardar cambios' : 'Agregar'}</button>
+        {initialSong && onCancel && (
+          <button type="button" className="secondary" onClick={() => { onCancel(); setTitle(''); setKey(''); setLyrics('') }}>
+            Cancelar
+          </button>
+        )}
+      </div>
     </form>
   )
 }
 
-function PlaylistView({ playlists, songs }) {
+function PlaylistView({ playlists, songs, onSelectSong }) {
   return (
     <div>
       <h2>Listas de Reproducción</h2>
       {playlists.map(playlist => (
-        <div key={playlist.name}>
+        <div key={playlist.name} className="playlist-card">
           <h3>{playlist.name}</h3>
           <ul>
             {playlist.songs.map(id => {
               const song = songs.find(s => s.id === id)
-              return song ? <li key={id}>{song.title}</li> : null
+              return song ? (
+                <li key={id}>
+                  <button className="playlist-song" type="button" onClick={() => onSelectSong(song.id)}>
+                    {song.title}
+                  </button>
+                </li>
+              ) : null
             })}
           </ul>
         </div>

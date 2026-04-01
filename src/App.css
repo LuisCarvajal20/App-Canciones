@@ -89,6 +89,16 @@ nav button:hover {
   margin-bottom: 1rem;
 }
 
+.song-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.song-actions button {
+  min-width: 96px;
+}
+
 .song-key {
   color: var(--muted);
   margin: 0;
@@ -181,6 +191,30 @@ button.secondary {
 button:hover,
 button.secondary:hover {
   filter: brightness(1.05);
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.playlist-card {
+  margin-bottom: 1.25rem;
+}
+
+.playlist-song {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+}
+
+.playlist-song:hover {
+  text-decoration: underline;
 }
 
 .transpose-panel {
