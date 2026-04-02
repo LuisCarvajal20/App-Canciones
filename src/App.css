@@ -212,6 +212,25 @@ button.secondary:hover {
   filter: brightness(1.05);
 }
 
+.delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: #ef4444;
+  border: 1px solid #ef4444;
+  cursor: pointer;
+}
+
+.delete-btn:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
 .form-actions {
   display: flex;
   gap: 0.75rem;
@@ -254,12 +273,56 @@ button.secondary:hover {
   margin-bottom: 0.75rem;
 }
 
+.playlist-card-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:0.75rem;
+}
+
+.playlist-remove-btn {
+  background: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playlist-remove-btn:hover {
+  background: #ef4444;
+  color: #fff;
+}
+
 .playlist-card ul {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
   gap: 0.5rem;
+}
+
+.playlist-item {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.playlist-delete-btn {
+  background: transparent;
+  border: 1px solid #ef4444;
+  color: #ef4444;
+  padding: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.playlist-delete-btn:hover {
+  background: #ef4444;
+  color: #fff;
 }
 
 .playlist-song {
@@ -418,6 +481,72 @@ body.dark {
 .app.dark button.secondary {
   background: #2563eb;
 }
+
+.app.dark .delete-btn {
+  color: #fca5a5;
+  border-color: #f87171;
+}
+
+.app.dark .delete-btn:hover {
+  background: #f87171;
+  color: #111827;
+}
+
+/* Modal styles + animation */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(2,6,23,0.55);
+  z-index: 60;
+  animation: overlayFade 180ms ease forwards;
+}
+
+.modal {
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 12px;
+  padding: 1.25rem;
+  width: min(480px, 92%);
+  box-shadow: 0 12px 40px rgba(2,6,23,0.45);
+  transform-origin: center;
+  animation: modalPop 220ms cubic-bezier(.2,.9,.2,1) forwards;
+}
+
+.modal h3 { margin-top: 0; }
+.modal-actions { display:flex; gap:0.75rem; justify-content:flex-end; margin-top:1rem }
+.delete-confirm {
+  background: #ef4444;
+  border: none;
+  color: white;
+  padding: 0.6rem 1rem;
+  border-radius: 10px;
+  cursor: pointer;
+}
+.delete-confirm:hover { filter:brightness(0.95) }
+
+@keyframes overlayFade {
+  from { opacity: 0 }
+  to { opacity: 1 }
+}
+
+@keyframes modalPop {
+  0% { opacity: 0; transform: translateY(10px) scale(0.98) }
+  100% { opacity: 1; transform: translateY(0) scale(1) }
+}
+
+@keyframes sileo {
+  0% { opacity: 0; transform: translateY(12px) scale(0.985) }
+  60% { opacity: 1; transform: translateY(-4px) scale(1.006) }
+  100% { opacity: 1; transform: translateY(0) scale(1) }
+}
+
+.modal { animation: sileo 260ms cubic-bezier(.2,.9,.2,1) forwards }
+
+.app.dark .modal { background: #0b1220; color: #e6eef8 }
+.app.dark .delete-confirm { background: #f87171 }
 
 .app.dark button.secondary:hover {
   background: #1d4ed8;

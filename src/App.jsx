@@ -31,6 +31,53 @@ function App() {
     setSongs([...songs, { ...song, id: Date.now() }])
   }
 
+  const deleteSong = (id) => {
+    setSongs(songs.filter(s => s.id !== id))
+    setPlaylists(playlists.map(p => ({ ...p, songs: p.songs.filter(sid => sid !== id) })))
+  }
+
+  const [deleteTarget, setDeleteTarget] = useState(null)
+
+  // requestDeleteSong accepts either (song) coming from songs view
+  // or (song, { source: 'playlist', playlistName }) coming from PlaylistView
+  const requestDeleteSong = (song, options = {}) => {
+    setDeleteTarget({ song, source: options.source || 'songs', playlistName: options.playlistName || null })
+  }
+
+  const requestDeletePlaylist = (playlistName) => {
+    const pl = playlists.find(p => p.name === playlistName)
+    if (!pl) return
+    setDeleteTarget({ kind: 'playlist', playlistName, songIds: [...pl.songs] })
+  }
+
+  const cancelDelete = () => setDeleteTarget(null)
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return
+    if (deleteTarget.kind === 'playlist' && deleteTarget.playlistName) {
+      const idsToRemove = new Set(deleteTarget.songIds || [])
+      // remove the playlist and remove the songs from collection and other playlists
+      setPlaylists(playlists.filter(p => p.name !== deleteTarget.playlistName).map(p => ({ ...p, songs: p.songs.filter(sid => !idsToRemove.has(sid)) })))
+      setSongs(songs.filter(s => !idsToRemove.has(s.id)))
+    } else if (deleteTarget.source === 'playlist' && deleteTarget.playlistName) {
+      // remove only from that playlist (single song)
+      setPlaylists(playlists.map(p => p.name === deleteTarget.playlistName ? ({ ...p, songs: p.songs.filter(sid => sid !== deleteTarget.song.id) }) : p))
+    } else {
+      // delete from main songs list and remove from playlists
+      deleteSong(deleteTarget.song.id)
+    }
+    setDeleteTarget(null)
+  }
+
+  useEffect(() => {
+    if (!deleteTarget) return
+    const onKey = (e) => {
+      if (e.key === 'Escape') cancelDelete()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [deleteTarget])
+
   const updateSong = (song) => {
     setSongs(songs.map(item => item.id === song.id ? song : item))
     setEditingSong(null)
@@ -78,14 +125,48 @@ function App() {
           {darkMode ? 'Modo Día' : 'Modo Noche'}
         </button>
       </nav>
-      {currentView === 'songs' && <SongList songs={songs} onTranspose={transposeSong} onAddToPlaylist={addToPlaylist} playlists={playlists} onEdit={(song) => { setEditingSong(song); setCurrentView('add') }} />}
+      {currentView === 'songs' && <SongList songs={songs} onTranspose={transposeSong} onAddToPlaylist={addToPlaylist} playlists={playlists} onEdit={(song) => { setEditingSong(song); setCurrentView('add') }} onDelete={deleteSong} onRequestDelete={requestDeleteSong} />}
       {currentView === 'add' && <AddSong onAdd={addSong} initialSong={editingSong} onUpdate={updateSong} onCancel={() => setEditingSong(null)} />}
-      {currentView === 'playlists' && <PlaylistView playlists={playlists} songs={songs} selectedSongId={selectedSongId} onSelectSong={showSong} />}
+      {currentView === 'playlists' && <PlaylistView playlists={playlists} songs={songs} selectedSongId={selectedSongId} onSelectSong={showSong} onRequestDelete={requestDeleteSong} onRequestDeletePlaylist={requestDeletePlaylist} />}
+
+      {deleteTarget && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" onClick={cancelDelete}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              {deleteTarget.kind === 'playlist' ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M10 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  <path d="M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              )}
+              <h3 style={{ margin: 0 }}>Confirmar eliminación</h3>
+            </div>
+            <p>
+              {deleteTarget.kind === 'playlist' && deleteTarget.playlistName
+                ? `¿Estás seguro que quieres eliminar la lista "${deleteTarget.playlistName}"? Esto eliminará todas las canciones que contiene de la colección.`
+                : deleteTarget.source === 'playlist' && deleteTarget.playlistName
+                ? `¿Estás seguro que quieres eliminar "${deleteTarget.song.title}" de la lista "${deleteTarget.playlistName}"?`
+                : `¿Estás seguro que quieres eliminar "${deleteTarget.song.title}" de la colección de canciones? Esto también la eliminará de cualquier lista de reproducción.`}
+            </p>
+            <div className="modal-actions">
+              <button className="secondary" onClick={cancelDelete}>Cancelar</button>
+              <button className="delete-confirm" onClick={confirmDelete}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
 
-function SongList({ songs, onTranspose, onAddToPlaylist, playlists, onEdit }) {
+function SongList({ songs, onTranspose, onAddToPlaylist, playlists, onEdit, onDelete, onRequestDelete }) {
   return (
     <div>
       <h2>Canciones</h2>
@@ -97,13 +178,15 @@ function SongList({ songs, onTranspose, onAddToPlaylist, playlists, onEdit }) {
           onAddToPlaylist={onAddToPlaylist}
           playlists={playlists}
           onEdit={onEdit}
+          onDelete={onDelete}
+          onRequestDelete={onRequestDelete}
         />
       ))}
     </div>
   )
 }
 
-function SongCard({ song, onTranspose, onAddToPlaylist, playlists, onEdit }) {
+function SongCard({ song, onTranspose, onAddToPlaylist, playlists, onEdit, onDelete, onRequestDelete }) {
   const [isOpen, setIsOpen] = useState(false)
   const [newListName, setNewListName] = useState('')
   const allKeys = [
@@ -133,12 +216,31 @@ function SongCard({ song, onTranspose, onAddToPlaylist, playlists, onEdit }) {
     setNewListName('')
   }
 
+  const handleDelete = () => {
+    if (onRequestDelete) onRequestDelete(song, { source: 'songs' })
+    else {
+      const ok = window.confirm('¿Estás seguro que quieres eliminar la canción de la lista?')
+      if (ok && onDelete) onDelete(song.id)
+    }
+  }
+
   return (
     <div className="song">
       <div className="song-header">
-        <div>
-          <h3>{song.title}</h3>
-          <p className="song-key">Tono: <strong>{song.key}</strong></p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <button className="delete-btn" onClick={handleDelete} aria-label={`Eliminar ${song.title}`} title="Eliminar canción">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+              <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M10 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </button>
+          <div>
+            <h3>{song.title}</h3>
+            <p className="song-key">Tono: <strong>{song.key}</strong></p>
+          </div>
         </div>
         <div className="song-actions">
           <button className="secondary" onClick={() => setIsOpen(!isOpen)}>
@@ -234,7 +336,7 @@ function AddSong({ onAdd, initialSong, onUpdate, onCancel }) {
   )
 }
 
-function PlaylistView({ playlists, songs, selectedSongId, onSelectSong }) {
+function PlaylistView({ playlists, songs, selectedSongId, onSelectSong, onRequestDelete, onRequestDeletePlaylist }) {
   const selectedSong = songs.find(s => s.id === selectedSongId)
   const [scrollMode, setScrollMode] = useState(null) // null, 'slow', 'fast'
   const scrollIntervalRef = useRef(null)
@@ -268,14 +370,31 @@ function PlaylistView({ playlists, songs, selectedSongId, onSelectSong }) {
         <h2>Listas de Reproducción</h2>
         {playlists.map(playlist => (
           <div key={playlist.name} className="playlist-card">
-            <h3>{playlist.name}</h3>
+            <div className="playlist-card-header">
+              <h3>{playlist.name}</h3>
+              <button className="playlist-remove-btn" title="Eliminar lista" onClick={() => onRequestDeletePlaylist && onRequestDeletePlaylist(playlist.name)} aria-label={`Eliminar lista ${playlist.name}`}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M18 6L6 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M6 6l12 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
             <ul>
               {playlist.songs.map(id => {
                 const song = songs.find(s => s.id === id)
                 return song ? (
-                  <li key={id}>
+                  <li key={id} className="playlist-item">
                     <button className={`playlist-song ${selectedSongId === song.id ? 'selected' : ''}`} type="button" onClick={() => onSelectSong(song.id)}>
                       {song.title}
+                    </button>
+                    <button className="playlist-delete-btn" title="Eliminar canción" onClick={() => onRequestDelete && onRequestDelete(song, { source: 'playlist', playlistName: playlist.name })} aria-label={`Eliminar ${song.title}`}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                        <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M8 6v12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M10 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M14 11v6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
                     </button>
                   </li>
                 ) : null
