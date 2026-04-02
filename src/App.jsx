@@ -55,10 +55,8 @@ function App() {
   const confirmDelete = () => {
     if (!deleteTarget) return
     if (deleteTarget.kind === 'playlist' && deleteTarget.playlistName) {
-      const idsToRemove = new Set(deleteTarget.songIds || [])
-      // remove the playlist and remove the songs from collection and other playlists
-      setPlaylists(playlists.filter(p => p.name !== deleteTarget.playlistName).map(p => ({ ...p, songs: p.songs.filter(sid => !idsToRemove.has(sid)) })))
-      setSongs(songs.filter(s => !idsToRemove.has(s.id)))
+      // remove only the playlist, keep all songs in the main collection
+      setPlaylists(playlists.filter(p => p.name !== deleteTarget.playlistName))
     } else if (deleteTarget.source === 'playlist' && deleteTarget.playlistName) {
       // remove only from that playlist (single song)
       setPlaylists(playlists.map(p => p.name === deleteTarget.playlistName ? ({ ...p, songs: p.songs.filter(sid => sid !== deleteTarget.song.id) }) : p))
@@ -150,7 +148,7 @@ function App() {
             </div>
             <p>
               {deleteTarget.kind === 'playlist' && deleteTarget.playlistName
-                ? `¿Estás seguro que quieres eliminar la lista "${deleteTarget.playlistName}"? Esto eliminará todas las canciones que contiene de la colección.`
+                ? `¿Estás seguro que quieres eliminar la lista "${deleteTarget.playlistName}"? Esto solo eliminará la lista y no las canciones.`
                 : deleteTarget.source === 'playlist' && deleteTarget.playlistName
                 ? `¿Estás seguro que quieres eliminar "${deleteTarget.song.title}" de la lista "${deleteTarget.playlistName}"?`
                 : `¿Estás seguro que quieres eliminar "${deleteTarget.song.title}" de la colección de canciones? Esto también la eliminará de cualquier lista de reproducción.`}
