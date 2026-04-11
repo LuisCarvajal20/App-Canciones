@@ -7,6 +7,7 @@ function App() {
   const [currentView, setCurrentView] = useState('songs')
   const [selectedSongId, setSelectedSongId] = useState(null)
   const [editingSong, setEditingSong] = useState(null)
+  const [scrollToSongId, setScrollToSongId] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     const saved = localStorage.getItem('darkMode')
     return saved ? JSON.parse(saved) : false
@@ -28,7 +29,20 @@ function App() {
   }, [playlists])
 
   const addSong = (song) => {
-    setSongs([...songs, { ...song, id: Date.now() }])
+    const id = Date.now()
+    setSongs(prevSongs => [...prevSongs, { ...song, id }])
+    setCurrentView('songs')
+    setScrollToSongId(id)
+  }
+
+  const movePlaylistSong = (playlistName, fromIndex, toIndex) => {
+    setPlaylists(prevPlaylists => prevPlaylists.map(p => {
+      if (p.name !== playlistName) return p
+      const nextSongs = [...p.songs]
+      const [moved] = nextSongs.splice(fromIndex, 1)
+      nextSongs.splice(toIndex, 0, moved)
+      return { ...p, songs: nextSongs }
+    }))
   }
 
   const deleteSong = (id) => {
@@ -79,7 +93,16 @@ function App() {
   const updateSong = (song) => {
     setSongs(songs.map(item => item.id === song.id ? song : item))
     setEditingSong(null)
+    setCurrentView('songs')
+    setScrollToSongId(song.id)
   }
+
+  useEffect(() => {
+    if (scrollToSongId !== null) {
+      const timer = setTimeout(() => setScrollToSongId(null), 800)
+      return () => clearTimeout(timer)
+    }
+  }, [scrollToSongId])
 
   const showSong = (songId) => {
     setSelectedSongId(songId)
@@ -123,9 +146,9 @@ function App() {
           {darkMode ? 'Modo Día' : 'Modo Noche'}
         </button>
       </nav>
-      {currentView === 'songs' && <SongList songs={songs} onTranspose={transposeSong} onAddToPlaylist={addToPlaylist} playlists={playlists} onEdit={(song) => { setEditingSong(song); setCurrentView('add') }} onDelete={deleteSong} onRequestDelete={requestDeleteSong} />}
+      {currentView === 'songs' && <SongList songs={songs} onTranspose={transposeSong} onAddToPlaylist={addToPlaylist} playlists={playlists} onEdit={(song) => { setEditingSong(song); setCurrentView('add') }} onDelete={deleteSong} onRequestDelete={requestDeleteSong} highlightSongId={scrollToSongId} />}
       {currentView === 'add' && <AddSong onAdd={addSong} initialSong={editingSong} onUpdate={updateSong} onCancel={() => setEditingSong(null)} />}
-      {currentView === 'playlists' && <PlaylistView playlists={playlists} songs={songs} selectedSongId={selectedSongId} onSelectSong={showSong} onRequestDelete={requestDeleteSong} onRequestDeletePlaylist={requestDeletePlaylist} />}
+      {currentView === 'playlists' && <PlaylistView playlists={playlists} songs={songs} selectedSongId={selectedSongId} onSelectSong={showSong} onRequestDelete={requestDeleteSong} onRequestDeletePlaylist={requestDeletePlaylist} onTranspose={transposeSong} onMoveSong={movePlaylistSong} />}
 
       {deleteTarget && (
         <div className="modal-overlay" role="dialog" aria-modal="true" onClick={cancelDelete}>
@@ -164,11 +187,23 @@ function App() {
   )
 }
 
-function SongList({ songs, onTranspose, onAddToPlaylist, playlists, onEdit, onDelete, onRequestDelete }) {
+function SongList({ songs, onTranspose, onAddToPlaylist, playlists, onEdit, onDelete, onRequestDelete, highlightSongId }) {
+  const [searchQuery, setSearchQuery] = useState('')
+  const filteredSongs = songs.filter(song => song.title.toLowerCase().includes(searchQuery.toLowerCase()))
+
   return (
     <div>
-      <h2>Canciones</h2>
-      {songs.map(song => (
+      <div className="view-header">
+        <h2>Lista General de Canciones</h2>
+        <input
+          className="search-input"
+          type="search"
+          placeholder="Buscar canciones..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+      {filteredSongs.length > 0 ? filteredSongs.map(song => (
         <SongCard
           key={song.id}
           song={song}
@@ -178,15 +213,20 @@ function SongList({ songs, onTranspose, onAddToPlaylist, playlists, onEdit, onDe
           onEdit={onEdit}
           onDelete={onDelete}
           onRequestDelete={onRequestDelete}
+          highlightSongId={highlightSongId}
         />
-      ))}
+      )) : <p className="empty-state">No se encontraron canciones.</p>}
     </div>
   )
 }
 
-function SongCard({ song, onTranspose, onAddToPlaylist, playlists, onEdit, onDelete, onRequestDelete }) {
+function SongCard({ song, onTranspose, onAddToPlaylist, playlists, onEdit, onDelete, onRequestDelete, highlightSongId }) {
   const [isOpen, setIsOpen] = useState(false)
   const [newListName, setNewListName] = useState('')
+  const [scrollMode, setScrollMode] = useState(null)
+  const [showFullLyrics, setShowFullLyrics] = useState(false)
+  const cardRef = useRef(null)
+  const scrollIntervalRef = useRef(null)
   const allKeys = [
     { key: 'C', label: 'DO=C' },
     { key: 'C#', label: 'DO#=C#' },
@@ -207,6 +247,36 @@ function SongCard({ song, onTranspose, onAddToPlaylist, playlists, onEdit, onDel
     setIsOpen(false)
   }
 
+  const toggleScroll = () => {
+    const nextMode = scrollMode === null ? 'slow' : scrollMode === 'slow' ? 'fast' : null
+    setScrollMode(nextMode)
+    if (nextMode !== null) {
+      setShowFullLyrics(true)
+      if (cardRef.current) {
+        cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }
+    }
+  }
+
+  useEffect(() => {
+    if (scrollMode) {
+      const speed = scrollMode === 'slow' ? 2 : 5
+      scrollIntervalRef.current = setInterval(() => {
+        window.scrollBy(0, speed)
+      }, 100)
+    } else if (scrollIntervalRef.current) {
+      clearInterval(scrollIntervalRef.current)
+      scrollIntervalRef.current = null
+    }
+
+    return () => {
+      if (scrollIntervalRef.current) {
+        clearInterval(scrollIntervalRef.current)
+        scrollIntervalRef.current = null
+      }
+    }
+  }, [scrollMode])
+
   const handleNewPlaylist = () => {
     const trimmed = newListName.trim()
     if (!trimmed) return
@@ -222,10 +292,41 @@ function SongCard({ song, onTranspose, onAddToPlaylist, playlists, onEdit, onDel
     }
   }
 
+  useEffect(() => {
+    if (highlightSongId === song.id && cardRef.current) {
+      cardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  }, [highlightSongId, song.id])
+
+  const songPlaylists = playlists.filter(p => p.songs.includes(song.id)).map(p => p.name)
+
   return (
-    <div className="song">
+    <div ref={cardRef} className={`song ${highlightSongId === song.id ? 'highlighted' : ''}`}>
       <div className="song-header">
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <div>
+            <h3>{song.title}</h3>
+            <p className="song-key">Tono: <strong>{song.key}</strong></p>
+            {songPlaylists.length > 0 && (
+              <div className="song-playlist-badges">
+                <span className="playlist-badge-label">Agregada en la lista:</span>
+                {songPlaylists.map(name => (
+                  <span key={name} className="playlist-badge">{name}</span>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="song-actions">
+          <button className="secondary auto-scroll-btn" type="button" onClick={toggleScroll}>
+            Auto-scroll: {scrollMode === null ? 'Off' : scrollMode === 'slow' ? 'Slow' : 'Fast'}
+          </button>
+          <button className={`secondary transport-toggle ${isOpen ? 'active' : ''}`} onClick={() => setIsOpen(!isOpen)}>
+            {isOpen ? 'Cerrar tonos' : 'Transportar'}
+          </button>
+          <button className="secondary" onClick={() => onEdit(song)}>
+            Editar
+          </button>
           <button className="delete-btn" onClick={handleDelete} aria-label={`Eliminar ${song.title}`} title="Eliminar canción">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
               <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -235,36 +336,25 @@ function SongCard({ song, onTranspose, onAddToPlaylist, playlists, onEdit, onDel
               <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </button>
-          <div>
-            <h3>{song.title}</h3>
-            <p className="song-key">Tono: <strong>{song.key}</strong></p>
-          </div>
-        </div>
-        <div className="song-actions">
-          <button className="secondary" onClick={() => setIsOpen(!isOpen)}>
-            {isOpen ? 'Cerrar tonos' : 'Transportar'}
-          </button>
-          <button className="secondary" onClick={() => onEdit(song)}>
-            Editar
-          </button>
         </div>
       </div>
 
-      <div className="lyrics" dangerouslySetInnerHTML={{ __html: formatLyrics(song.lyrics) }} />
+      <div className={`transpose-panel ${isOpen ? 'open' : 'closed'}`}>
+        {allKeys.map(item => (
+          <button
+            key={item.key}
+            className={`tone-btn ${item.key === song.key ? 'active' : ''}`}
+            onClick={() => handleTranspose(item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
 
-      {isOpen && (
-        <div className="transpose-panel">
-          {allKeys.map(item => (
-            <button
-              key={item.key}
-              className={`tone-btn ${item.key === song.key ? 'active' : ''}`}
-              onClick={() => handleTranspose(item.key)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className={`lyrics ${showFullLyrics || scrollMode !== null ? '' : 'collapsed'}`} dangerouslySetInnerHTML={{ __html: formatLyrics(song.lyrics) }} />
+      <button className="secondary small" type="button" onClick={() => setShowFullLyrics(prev => !prev)}>
+        {showFullLyrics ? 'Ver menos' : 'Ver más...'}
+      </button>
 
       <div className="playlist-control">
         <select defaultValue="" onChange={(e) => { if (e.target.value) onAddToPlaylist(e.target.value, song.id) }}>
@@ -290,6 +380,21 @@ function AddSong({ onAdd, initialSong, onUpdate, onCancel }) {
   const [title, setTitle] = useState('')
   const [key, setKey] = useState('')
   const [lyrics, setLyrics] = useState('')
+
+  const allKeys = [
+    { key: 'C', label: 'DO=C' },
+    { key: 'C#', label: 'DO#=C#' },
+    { key: 'D', label: 'RE=D' },
+    { key: 'D#', label: 'RE#=D#' },
+    { key: 'E', label: 'MI=E' },
+    { key: 'F', label: 'FA=F' },
+    { key: 'F#', label: 'FA#=F#' },
+    { key: 'G', label: 'SOL=G' },
+    { key: 'G#', label: 'SOL#=G#' },
+    { key: 'A', label: 'LA=A' },
+    { key: 'A#', label: 'LA#=A#' },
+    { key: 'B', label: 'SI=B' },
+  ]
 
   useEffect(() => {
     if (initialSong) {
@@ -320,7 +425,12 @@ function AddSong({ onAdd, initialSong, onUpdate, onCancel }) {
     <form onSubmit={handleSubmit}>
       <h2>{initialSong ? 'Editar Canción' : 'Agregar Canción'}</h2>
       <input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
-      <input placeholder="Tono" value={key} onChange={(e) => setKey(e.target.value)} required />
+      <select value={key} onChange={(e) => setKey(e.target.value)} required>
+        <option value="" disabled>Selecciona un tono</option>
+        {allKeys.map(item => (
+          <option key={item.key} value={item.key}>{item.label}</option>
+        ))}
+      </select>
       <textarea placeholder="Letras con acordes [C]Hola [D]mundo" value={lyrics} onChange={(e) => setLyrics(e.target.value)} required />
       <div className="form-actions">
         <button type="submit">{initialSong ? 'Guardar cambios' : 'Agregar'}</button>
@@ -334,9 +444,13 @@ function AddSong({ onAdd, initialSong, onUpdate, onCancel }) {
   )
 }
 
-function PlaylistView({ playlists, songs, selectedSongId, onSelectSong, onRequestDelete, onRequestDeletePlaylist }) {
+function PlaylistView({ playlists, songs, selectedSongId, onSelectSong, onRequestDelete, onRequestDeletePlaylist, onTranspose, onMoveSong }) {
+  const [playlistSearch, setPlaylistSearch] = useState('')
+  const [dragSource, setDragSource] = useState(null)
+  const [dragTarget, setDragTarget] = useState(null)
   const selectedSong = songs.find(s => s.id === selectedSongId)
   const [scrollMode, setScrollMode] = useState(null) // null, 'slow', 'fast'
+  const [transportOpen, setTransportOpen] = useState(false)
   const scrollIntervalRef = useRef(null)
 
   useEffect(() => {
@@ -362,11 +476,41 @@ function PlaylistView({ playlists, songs, selectedSongId, onSelectSong, onReques
     setScrollMode(scrollMode === null ? 'slow' : scrollMode === 'slow' ? 'fast' : null)
   }
 
+  const handleTranspose = (key) => {
+    if (!selectedSong) return
+    onTranspose(selectedSong.id, key)
+    setTransportOpen(false)
+  }
+
+  const allKeys = [
+    { key: 'C', label: 'DO=C' },
+    { key: 'C#', label: 'DO#=C#' },
+    { key: 'D', label: 'RE=D' },
+    { key: 'D#', label: 'RE#=D#' },
+    { key: 'E', label: 'MI=E' },
+    { key: 'F', label: 'FA=F' },
+    { key: 'F#', label: 'FA#=F#' },
+    { key: 'G', label: 'SOL=G' },
+    { key: 'G#', label: 'SOL#=G#' },
+    { key: 'A', label: 'LA=A' },
+    { key: 'A#', label: 'LA#=A#' },
+    { key: 'B', label: 'SI=B' },
+  ]
+
   return (
     <div className="playlist-layout">
       <div className="playlist-sidebar">
-        <h2>Listas de Reproducción</h2>
-        {playlists.map(playlist => (
+        <div className="view-header">
+          <h2>Listas de Reproducción</h2>
+          <input
+            className="search-input"
+            type="search"
+            placeholder="Buscar listas..."
+            value={playlistSearch}
+            onChange={(e) => setPlaylistSearch(e.target.value)}
+          />
+        </div>
+        {playlists.filter(playlist => playlist.name.toLowerCase().includes(playlistSearch.toLowerCase())).length > 0 ? playlists.filter(playlist => playlist.name.toLowerCase().includes(playlistSearch.toLowerCase())).map(playlist => (
           <div key={playlist.name} className="playlist-card">
             <div className="playlist-card-header">
               <h3>{playlist.name}</h3>
@@ -378,13 +522,39 @@ function PlaylistView({ playlists, songs, selectedSongId, onSelectSong, onReques
               </button>
             </div>
             <ul>
-              {playlist.songs.map(id => {
+              {playlist.songs.map((id, index) => {
                 const song = songs.find(s => s.id === id)
                 return song ? (
-                  <li key={id} className="playlist-item">
-                    <button className={`playlist-song ${selectedSongId === song.id ? 'selected' : ''}`} type="button" onClick={() => onSelectSong(song.id)}>
-                      {song.title}
-                    </button>
+                  <li
+                    key={id}
+                    className={`playlist-item ${dragTarget === index && dragSource !== null ? 'drag-over' : ''}`}
+                    draggable
+                    onDragStart={(e) => {
+                      setDragSource(index)
+                      e.dataTransfer.effectAllowed = 'move'
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault()
+                      setDragTarget(index)
+                    }}
+                    onDragLeave={() => setDragTarget(null)}
+                    onDrop={(e) => {
+                      e.preventDefault()
+                      const fromIndex = dragSource
+                      const toIndex = index
+                      if (fromIndex !== null && fromIndex !== toIndex) {
+                        onMoveSong(playlist.name, fromIndex, toIndex)
+                      }
+                      setDragSource(null)
+                      setDragTarget(null)
+                    }}
+                  >
+                    <div className="playlist-item-left">
+                      <span className="playlist-item-number">{index + 1}</span>
+                      <button className={`playlist-song ${selectedSongId === song.id ? 'selected' : ''}`} type="button" onClick={() => onSelectSong(song.id)}>
+                        {song.title}
+                      </button>
+                    </div>
                     <button className="playlist-delete-btn" title="Eliminar canción" onClick={() => onRequestDelete && onRequestDelete(song, { source: 'playlist', playlistName: playlist.name })} aria-label={`Eliminar ${song.title}`}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
                         <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -399,13 +569,25 @@ function PlaylistView({ playlists, songs, selectedSongId, onSelectSong, onReques
               })}
             </ul>
           </div>
-        ))}
+        )) : <p className="empty-state">No se encontraron listas.</p>}
       </div>
       <div className="playlist-detail">
         {selectedSong ? (
           <div className="song-detail-card">
             <h2>{selectedSong.title}</h2>
-            <p className="song-key">Tono: <strong>{selectedSong.key}</strong></p>
+            <div className="song-detail-meta">
+              <p className="song-key">Tono: <strong>{selectedSong.key}</strong></p>
+              <button className={`secondary transport-toggle ${transportOpen ? 'active' : ''}`} type="button" onClick={() => setTransportOpen(!transportOpen)}>
+                {transportOpen ? 'Cerrar transportar' : 'Transportar'}
+              </button>
+            </div>
+            <div className={`transpose-panel ${transportOpen ? 'open' : 'closed'}`}>
+              {allKeys.map(item => (
+                <button key={item.key} className={`tone-btn ${item.key === selectedSong.key ? 'active' : ''}`} type="button" onClick={() => handleTranspose(item.key)}>
+                  {item.label}
+                </button>
+              ))}
+            </div>
             <button className="secondary auto-scroll-btn" onClick={toggleScroll}>
               Auto-scroll: {scrollMode === null ? 'Off' : scrollMode === 'slow' ? 'Slow' : 'Fast'}
             </button>
