@@ -137,18 +137,49 @@ function App() {
 
   return (
     <div className={`app ${darkMode ? 'dark' : ''}`}>
-      <h1>App de Canciones</h1>
-      <nav>
-        <button onClick={() => { setCurrentView('songs'); setSelectedSongId(null); setEditingSong(null) }}>Canciones</button>
-        <button onClick={() => { setCurrentView('add'); setEditingSong(null); setSelectedSongId(null) }}>Agregar Canción</button>
-        <button onClick={() => { setCurrentView('playlists'); setSelectedSongId(null); setEditingSong(null) }}>Listas</button>
-        <button className="secondary mode-toggle" onClick={() => setDarkMode(!darkMode)}>
-          {darkMode ? 'Modo Día' : 'Modo Noche'}
-        </button>
-      </nav>
-      {currentView === 'songs' && <SongList songs={songs} onTranspose={transposeSong} onAddToPlaylist={addToPlaylist} playlists={playlists} onEdit={(song) => { setEditingSong(song); setCurrentView('add') }} onDelete={deleteSong} onRequestDelete={requestDeleteSong} highlightSongId={scrollToSongId} />}
-      {currentView === 'add' && <AddSong onAdd={addSong} initialSong={editingSong} onUpdate={updateSong} onCancel={() => setEditingSong(null)} />}
-      {currentView === 'playlists' && <PlaylistView playlists={playlists} songs={songs} selectedSongId={selectedSongId} onSelectSong={showSong} onRequestDelete={requestDeleteSong} onRequestDeletePlaylist={requestDeletePlaylist} onTranspose={transposeSong} onMoveSong={movePlaylistSong} />}
+      <header className="app-bar">
+        <div className="brand-bar">
+          <h1>App de Canciones</h1>
+        </div>
+        <div className="header-actions">
+          <nav>
+            <button onClick={() => { setCurrentView('songs'); setSelectedSongId(null); setEditingSong(null) }}>Canciones</button>
+            <button onClick={() => { setCurrentView('add'); setEditingSong(null); setSelectedSongId(null) }}>Agregar Canción</button>
+            <button onClick={() => { setCurrentView('playlists'); setSelectedSongId(null); setEditingSong(null) }}>Listas</button>
+          </nav>
+          <button className="secondary mode-toggle" onClick={() => setDarkMode(!darkMode)}>
+            {darkMode ? (
+              <>
+                <svg className="mode-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M12 4.5a1 1 0 0 1 1 1V8a1 1 0 1 1-2 0V5.5a1 1 0 0 1 1-1Z" fill="currentColor"/>
+                  <path d="M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" fill="currentColor"/>
+                  <path d="M12 19.5a1 1 0 0 1 1 1V21a1 1 0 1 1-2 0v-.5a1 1 0 0 1 1-1Z" fill="currentColor"/>
+                  <path d="M5.22 6.22a1 1 0 0 1 1.414 0l.353.353a1 1 0 1 1-1.414 1.414L5.22 7.636a1 1 0 0 1 0-1.414Z" fill="currentColor"/>
+                  <path d="M17.01 17.01a1 1 0 0 1 1.414 0l.353.354a1 1 0 0 1-1.414 1.414l-.353-.353a1 1 0 0 1 0-1.415Z" fill="currentColor"/>
+                  <path d="M4.5 12a1 1 0 0 1 1-1H7a1 1 0 1 1 0 2H5.5a1 1 0 0 1-1-1Z" fill="currentColor"/>
+                  <path d="M17 12a1 1 0 0 1 1-1h1.5a1 1 0 1 1 0 2H18a1 1 0 0 1-1-1Z" fill="currentColor"/>
+                  <path d="M5.22 17.78a1 1 0 0 1 0 1.414l-.353.353a1 1 0 1 1-1.414-1.414l.353-.353a1 1 0 0 1 1.414 0Z" fill="currentColor"/>
+                  <path d="M17.01 6.99a1 1 0 0 1 0 1.414l-.353.353a1 1 0 0 1-1.414-1.414l.353-.353a1 1 0 0 1 1.414 0Z" fill="currentColor"/>
+                </svg>
+                Modo Día
+              </>
+            ) : (
+              <>
+                <svg className="mode-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden>
+                  <path d="M12 3a1 1 0 0 1 .993.883L13 4a8 8 0 1 0 8 8 1 1 0 0 1 0 2 10 10 0 1 1-10-10Z" fill="currentColor"/>
+                  <path d="M12 5.5a6.5 6.5 0 0 0 0 13 6.5 6.5 0 0 1 0-13Z" fill="currentColor" opacity="0.4"/>
+                </svg>
+                Modo Noche
+              </>
+            )}
+          </button>
+        </div>
+      </header>
+      <main className="app-content">
+        {currentView === 'songs' && <SongList songs={songs} onTranspose={transposeSong} onAddToPlaylist={addToPlaylist} playlists={playlists} onEdit={(song) => { setEditingSong(song); setCurrentView('add') }} onDelete={deleteSong} onRequestDelete={requestDeleteSong} highlightSongId={scrollToSongId} />}
+        {currentView === 'add' && <AddSong onAdd={addSong} initialSong={editingSong} onUpdate={updateSong} onCancel={() => setEditingSong(null)} />}
+        {currentView === 'playlists' && <PlaylistView playlists={playlists} songs={songs} selectedSongId={selectedSongId} onSelectSong={showSong} onRequestDelete={requestDeleteSong} onRequestDeletePlaylist={requestDeletePlaylist} onTranspose={transposeSong} onMoveSong={movePlaylistSong} />}
+      </main>
 
       {deleteTarget && (
         <div className="modal-overlay" role="dialog" aria-modal="true" onClick={cancelDelete}>
@@ -422,25 +453,30 @@ function AddSong({ onAdd, initialSong, onUpdate, onCancel }) {
   }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <h2>{initialSong ? 'Editar Canción' : 'Agregar Canción'}</h2>
-      <input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
-      <select value={key} onChange={(e) => setKey(e.target.value)} required>
-        <option value="" disabled>Selecciona un tono</option>
-        {allKeys.map(item => (
-          <option key={item.key} value={item.key}>{item.label}</option>
-        ))}
-      </select>
-      <textarea placeholder="Letras con acordes [C]Hola [D]mundo" value={lyrics} onChange={(e) => setLyrics(e.target.value)} required />
-      <div className="form-actions">
-        <button type="submit">{initialSong ? 'Guardar cambios' : 'Agregar'}</button>
-        {initialSong && onCancel && (
-          <button type="button" className="secondary" onClick={() => { onCancel(); setTitle(''); setKey(''); setLyrics('') }}>
-            Cancelar
-          </button>
-        )}
+    <div>
+      <div className="view-header">
+        <h2>{initialSong ? 'Editar Canción' : 'Agregar Canción'}</h2>
+        <div className="view-header-filler" aria-hidden="true" />
       </div>
-    </form>
+      <form onSubmit={handleSubmit}>
+        <input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
+        <select value={key} onChange={(e) => setKey(e.target.value)} required>
+          <option value="" disabled>Selecciona un tono</option>
+          {allKeys.map(item => (
+            <option key={item.key} value={item.key}>{item.label}</option>
+          ))}
+        </select>
+        <textarea placeholder="Letras con acordes [C]Hola [D]mundo" value={lyrics} onChange={(e) => setLyrics(e.target.value)} required />
+        <div className="form-actions">
+          <button type="submit">{initialSong ? 'Guardar cambios' : 'Agregar'}</button>
+          {initialSong && onCancel && (
+            <button type="button" className="secondary" onClick={() => { onCancel(); setTitle(''); setKey(''); setLyrics('') }}>
+              Cancelar
+            </button>
+          )}
+        </div>
+      </form>
+    </div>
   )
 }
 

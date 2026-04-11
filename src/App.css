@@ -17,6 +17,10 @@
   --panel: #eef2ff;
 }
 
+html, body, #root {
+  min-height: 100%;
+}
+
 body {
   margin: 0;
   min-height: 100vh;
@@ -29,12 +33,46 @@ body {
 
 #root {
   max-width: 1080px;
+  min-width: 900px;
   margin: 0 auto;
   padding: 2rem 1.5rem;
+  min-height: 100vh;
+  box-sizing: border-box;
 }
 
 .app {
   text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.app-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+  width: 100%;
+  top: 0;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid rgba(226,232,240,0.9);
+}
+
+.brand-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.app-content {
+  width: 100%;
 }
 
 h1 {
@@ -57,7 +95,7 @@ nav {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
-  margin-bottom: 1.75rem;
+  margin-bottom: 1rem;
 }
 
 nav button {
@@ -243,10 +281,19 @@ button.secondary {
 
 button.secondary.mode-toggle {
   background: var(--button-strong);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 button.secondary.mode-toggle:hover {
   background: #fb923c;
+}
+
+.mode-icon {
+  width: 1rem;
+  height: 1rem;
+  display: inline-block;
 }
 
 button.transport-toggle {
@@ -300,6 +347,12 @@ button.secondary:hover {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 1rem;
+  min-height: 3rem;
+}
+
+.view-header-filler {
+  width: min(320px, 100%);
+  min-height: 2.5rem;
 }
 
 .search-input {
