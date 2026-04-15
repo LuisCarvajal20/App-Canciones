@@ -474,6 +474,10 @@ button.secondary:hover {
   border-radius: 999px;
   padding: 0.25rem 0.5rem;
 }
+.app.dark .playlist-item-number {
+  background: rgba(99,102,241,0.24);
+  color: #c7d2fe;
+}
 
 .playlist-delete-btn {
   background: rgba(239,68,68,0.08);
