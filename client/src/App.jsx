@@ -139,7 +139,7 @@ function App() {
     <div className={`app ${darkMode ? 'dark' : ''}`}>
       <header className="app-bar">
         <div className="brand-bar">
-          <h1>App de Canciones</h1>
+          <h1>Bienvenido a tu Cancionero personal</h1>
         </div>
         <div className="header-actions">
           <nav>
@@ -406,78 +406,114 @@ function SongCard({ song, onTranspose, onAddToPlaylist, playlists, onEdit, onDel
     </div>
   )
 }
+//aqui es la parte de agg canciones
+const getHarmonicCircle = (root) => {
+  const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const cleanRoot = root.split('=')[1] || root; // Maneja "DO=C" -> "C"
+  const idx = notes.indexOf(cleanRoot);
+  if (idx === -1) return [];
 
+  const intervals = [
+    { o: 0, s: '' }, { o: 2, s: 'm' }, { o: 4, s: 'm' },
+    { o: 5, s: '' }, { o: 7, s: '' }, { o: 9, s: 'm' }
+  ];
+
+  return intervals.map(i => notes[(idx + i.o) % 12] + i.s);
+};
 function AddSong({ onAdd, initialSong, onUpdate, onCancel }) {
-  const [title, setTitle] = useState('')
-  const [key, setKey] = useState('')
-  const [lyrics, setLyrics] = useState('')
+  const [title, setTitle] = useState(initialSong?.title || '');
+  const [key, setKey] = useState(initialSong?.key || '');
+  const [lyrics, setLyrics] = useState(initialSong?.lyrics || '');
+  const [draggedChord, setDraggedChord] = useState(null);
 
   const allKeys = [
-    { key: 'C', label: 'DO=C' },
-    { key: 'C#', label: 'DO#=C#' },
-    { key: 'D', label: 'RE=D' },
-    { key: 'D#', label: 'RE#=D#' },
-    { key: 'E', label: 'MI=E' },
-    { key: 'F', label: 'FA=F' },
-    { key: 'F#', label: 'FA#=F#' },
-    { key: 'G', label: 'SOL=G' },
-    { key: 'G#', label: 'SOL#=G#' },
-    { key: 'A', label: 'LA=A' },
-    { key: 'A#', label: 'LA#=A#' },
-    { key: 'B', label: 'SI=B' },
-  ]
+    { key: 'C', label: 'DO=C' }, { key: 'C#', label: 'DO#=C#' },
+    { key: 'D', label: 'RE=D' }, { key: 'D#', label: 'RE#=D#' },
+    { key: 'E', label: 'MI=E' }, { key: 'F', label: 'FA=F' },
+    { key: 'F#', label: 'FA#=F#' }, { key: 'G', label: 'SOL=G' },
+    { key: 'G#', label: 'SOL#=G#' }, { key: 'A', label: 'LA=A' },
+    { key: 'A#', label: 'LA#=A#' }, { key: 'B', label: 'SI=B' },
+  ];
 
-  useEffect(() => {
-    if (initialSong) {
-      setTitle(initialSong.title)
-      setKey(initialSong.key)
-      setLyrics(initialSong.lyrics)
-    } else {
-      setTitle('')
-      setKey('')
-      setLyrics('')
-    }
-  }, [initialSong])
+  const harmonicChords = key ? getHarmonicCircle(key) : [];
 
-  const handleSubmit = (e) => {
-    e.preventDefault()
-    if (initialSong) {
-      onUpdate({ ...initialSong, title, key, lyrics })
-      if (onCancel) onCancel()
-    } else {
-      onAdd({ title, key, lyrics })
-    }
-    setTitle('')
-    setKey('')
-    setLyrics('')
-  }
+  const handleDrop = (e, index) => {
+    e.preventDefault();
+    if (!draggedChord) return;
+    
+    // Insertamos el acorde en la posición exacta del texto
+    const newLyrics = lyrics.slice(0, index) + `[${draggedChord}]` + lyrics.slice(index);
+    setLyrics(newLyrics);
+    setDraggedChord(null);
+  };
+
+  const onDragOver = (e) => {
+    e.preventDefault(); // CRITICO: Sin esto el drop no funciona
+  };
 
   return (
-    <div>
-      <div className="view-header">
-        <h2>{initialSong ? 'Editar Canción' : 'Agregar Canción'}</h2>
-        <div className="view-header-filler" aria-hidden="true" />
+    <div className="add-song-layout">
+      <div className="editor-section">
+        <form onSubmit={(e) => {
+          e.preventDefault();
+          const data = { title, key, lyrics };
+          initialSong ? onUpdate({ ...initialSong, ...data }) : onAdd(data);
+        }}>
+          <input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
+          
+          <select value={key} onChange={(e) => setKey(e.target.value)} required>
+            <option value="" disabled>Selecciona un tono</option>
+            {allKeys.map(item => <option key={item.key} value={item.key}>{item.label}</option>)}
+          </select>
+
+          <div className="interactive-editor">
+             {/* El secreto: Renderizamos letras invisibles pero que ocupan espacio sobre el textarea */}
+            <div className="drop-overlay">
+              {lyrics.split('').map((char, i) => (
+                <span 
+                  key={i} 
+                  className="drop-target-char"
+                  onDragOver={onDragOver}
+                  onDrop={(e) => handleDrop(e, i)}
+                >
+                  {char === '\n' ? <br /> : char}
+                </span>
+              ))}
+              {/* Punto para soltar al puro final */}
+              <span className="drop-target-char" onDragOver={onDragOver} onDrop={(e) => handleDrop(e, lyrics.length)}> </span>
+            </div>
+
+            <textarea 
+              value={lyrics} 
+              onChange={(e) => setLyrics(e.target.value)}
+              spellCheck="false"
+            />
+          </div>
+
+          <div className="form-actions">
+            <button type="submit" className="primary-btn">Guardar</button>
+            <button type="button" className="secondary-btn" onClick={onCancel}>Cancelar</button>
+          </div>
+        </form>
       </div>
-      <form onSubmit={handleSubmit}>
-        <input placeholder="Título" value={title} onChange={(e) => setTitle(e.target.value)} required />
-        <select value={key} onChange={(e) => setKey(e.target.value)} required>
-          <option value="" disabled>Selecciona un tono</option>
-          {allKeys.map(item => (
-            <option key={item.key} value={item.key}>{item.label}</option>
+
+      <aside className="harmonic-panel">
+        <h3>Círculo Armónico</h3>
+        <div className="chord-grid">
+          {harmonicChords.map(chord => (
+            <div 
+              key={chord} 
+              className="chord-pill" 
+              draggable 
+              onDragStart={() => setDraggedChord(chord)}
+            >
+              {chord}
+            </div>
           ))}
-        </select>
-        <textarea placeholder="Letras con acordes [C]Hola [D]mundo" value={lyrics} onChange={(e) => setLyrics(e.target.value)} required />
-        <div className="form-actions">
-          <button type="submit">{initialSong ? 'Guardar cambios' : 'Agregar'}</button>
-          {initialSong && onCancel && (
-            <button type="button" className="secondary" onClick={() => { onCancel(); setTitle(''); setKey(''); setLyrics('') }}>
-              Cancelar
-            </button>
-          )}
         </div>
-      </form>
+      </aside>
     </div>
-  )
+  );
 }
 
 function PlaylistView({ playlists, songs, selectedSongId, onSelectSong, onRequestDelete, onRequestDeletePlaylist, onTranspose, onMoveSong }) {

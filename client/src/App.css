@@ -39,6 +39,150 @@ body {
   min-height: 100vh;
   box-sizing: border-box;
 }
+/* aqui agregue algo de gemini */
+.add-song-layout {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+/* Sección del formulario */
+.editor-section {
+  flex: 1; /* Esto empuja al panel a la derecha */
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* El área interactiva donde sucede la magia */
+.interactive-editor {
+  position: relative;
+  width: 100%;
+  min-height: 250px;
+  background: #0f172a;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  overflow: hidden; /* Mantiene todo adentro */
+}
+
+/* El textarea es el fondo */
+.interactive-editor textarea {
+  width: 100%;
+  min-height: 250px;
+  background: transparent;
+  color: #f8fafc; /* Este es el texto que SÍ se ve */
+  padding: 15px; /* IMPORTANTE: Mismo padding en ambos */
+  border: none;
+  outline: none;
+  resize: vertical; /* Deja que el usuario lo agrande si quiere */
+  position: relative;
+  z-index: 1; /* Abajo */
+  
+  /* Tipo de letra CRÍTICO: Debe ser idéntico en ambos */
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+/* Esta capa está ENCIMA pero el mouse pasa a través */
+.drop-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  padding: 15px; /* IMPORTANTE: Mismo padding que el textarea */
+  
+  /* Tipo de letra CRÍTICO: Debe ser idéntico al textarea */
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  line-height: 1.6;
+  
+  white-space: pre-wrap; /* Mantiene los espacios y saltos de línea */
+  
+  /* 1. MÁGIA: El mouse pasa a través de la capa de drop */
+  pointer-events: none; 
+  z-index: 10; /* Arriba */
+  
+  /* Evita que se vea el texto doble, pero lo mantiene ahí */
+  color: transparent !important;
+}
+
+/* Solo los caracteres individuales reciben el drop */
+.drop-target-char {
+  display: inline;
+  position: relative;
+  
+  /* 2. MÁGIA: Activamos el mouse solo para los caracteres */
+  pointer-events: auto; 
+  cursor: copy;
+  
+  /* Mantenemos el color transparente para que no se vea doble */
+  color: transparent !important;
+}
+
+/* El resalte azul al arrastrar */
+.drop-target-char:hover {
+  background: rgba(59, 130, 246, 0.4); 
+  border-radius: 2px;
+}
+
+/* Esta capa detecta el "drop" letra por letra */
+.drop-layer {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  padding: 15px;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 16px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  pointer-events: none; /* No bloquea el click al textarea */
+  z-index: 1;
+}
+
+.drop-point {
+  pointer-events: auto; /* Solo los puntos de drop reciben el acorde */
+  display: inline-block;
+  min-width: 8px;
+  height: 1.2em;
+}
+
+.drop-point:hover {
+  background: rgba(59, 130, 246, 0.4);
+  border-radius: 2px;
+}
+
+/* Panel Armónico a la derecha */
+.harmonic-panel {
+  width: 220px;
+  background: #1f2937;
+  padding: 20px;
+  border-radius: 12px;
+  border: 1px solid #374151;
+  position: sticky;
+  top: 20px; /* Se queda fijo mientras haces scroll */
+}
+
+.chord-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.chord-item {
+  background: #3b82f6;
+  color: white;
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+  cursor: grab;
+  font-weight: bold;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.chord-item:active { cursor: grabbing; }
+/* aqui termina la parte de gemini */
 
 .app {
   text-align: left;
